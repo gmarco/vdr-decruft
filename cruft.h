@@ -6,5 +6,6 @@
 
 extern int      parse_file(const char *filename);
 extern bool     CheckChannel(cChannel *channel);
+extern bool     CheckChannelMove(cChannel *channel);
 
 #endif // CRUFT_CRUFT_H

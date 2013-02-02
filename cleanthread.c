@@ -1,3 +1,14 @@
+/*
+ * decruft: A plugin for the Video Disk Recorder
+ *
+ * See the README file for copyright information and how to reach the author.
+ *
+ * $Id$
+ *
+ * Main thread - based on the epgsearch timer thread code
+ *
+ * TODO: Trigger a rescan 
+ */
 
 
 #include <vdr/channels.h>
@@ -75,13 +86,17 @@ void cCruftCleanThread::Action(void)
         time_t now = time(NULL);
         if (now >= nextUpdate || NeedUpdate()) {
             if ( Channels.BeingEdited() ) {
+		printf("Channels are being edited");
                 sleepSec(1);
                 continue;
             }
 
+	printf("Cleaning\n");
             /* Grab the channels lock */
-            if (!Channels.Lock(true,10))
+            if (!Channels.Lock(true,10)) {
+		printf("Can't lock channels\n");
                 continue;
+            }
 
             for ( cChannel *channel = Channels.First(); channel ; ) {
                 cChannel *next = Channels.Next(channel);
@@ -97,11 +112,19 @@ void cCruftCleanThread::Action(void)
                             }
                         }
                         if ( del ) {
-                            esyslog("Deleting channel <%s>\n",channel->Name());
+                            esyslog("Deleting channel <%s;%s>\n",channel->Name(),channel->Provider());
                             Channels.Del(channel);
                             Channels.ReNumber();
+                        } else {
+                            /* We might hit the same channels again, but the
+                               second time they won't be moved...nasty 
+                            */
+                            CheckChannelMove(channel);
                         }
-                    }
+
+                    } else {
+			CheckChannelMove(channel);
+		    }
                 }
                 channel = next;
             }

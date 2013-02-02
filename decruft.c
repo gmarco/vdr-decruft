@@ -4,13 +4,16 @@
  * See the README file for copyright information and how to reach the author.
  *
  * $Id$
+ *
+ * TODO: Configuration
+ * TODO: Option to scan on demand
  */
 
 #include <vdr/plugin.h>
 #include "cleanthread.h"
 #include "cruft.h"
 
-static const char *VERSION        = "0.0.1";
+static const char *VERSION        = "0.0.2";
 static const char *DESCRIPTION    = "Remove the cruft from your channels";
 static const char *MAINMENUENTRY  = "Decruft";
 

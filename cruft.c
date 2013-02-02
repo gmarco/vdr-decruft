@@ -1,11 +1,16 @@
 /*
- * decruft.c: A plugin for the Video Disk Recorder
+ * decruft: A plugin for the Video Disk Recorder
  *
  * See the README file for copyright information and how to reach the author.
  *
  * $Id$
  *
+ * Purge or move channels based on a spec
+ *
+ * Moving/grouping based on the Source dependent channel insertion patch
+ *
  * TODO: Reloading of config
+ * TODO: Better file format?
  */
 
 
@@ -18,6 +23,7 @@
 #include <regex.h>
 
 typedef struct {
+    char     *group_name;
     int       num_cas;
     int      *cas;
     int       num_vpids;
@@ -43,6 +49,8 @@ static int          num_clean = 0;
 static setting_t  **clean     = NULL;
 static int          num_keep  = 0;
 static setting_t  **keep      = NULL;
+static int          num_groups = 0;
+static setting_t  **groups     = NULL;
 
 /* Cleanup a settings_t */
 void free_settings(setting_t *s)
@@ -88,12 +96,15 @@ void free_settings(setting_t *s)
     if ( s->sources ) {
         free(s->sources);
     }
+    if ( s->group_name ) {
+        free(s->group_name);
+    }
     free(s);
 }
 
 
 /* TODO: This parsing code (and file format) sucks, it really needs to
- *  be fixed, but it...I guess it does the job...
+ *  be fixed, but...I guess it does the job...
  */
 static char *check_arg(char *ptr, char *match)
 {
@@ -161,11 +172,7 @@ static int parse_line(setting_t *settings, char *line)
             read_ints(temp,&settings->num_cas,&settings->cas);
         } else if ( (temp = check_arg(ptr,"provider=") ) != NULL ) {
             if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
-                if ( *end == '\n' ) {
-                    ptr = end + 1;
-                } else {
-                    ptr = end;
-                }
+                ptr = end + 1;
                 *end = 0;
                 i = settings->num_provs++;
                 settings->provs = (char **)realloc(settings->provs, settings->num_provs * sizeof(char *));
@@ -177,16 +184,13 @@ static int parse_line(setting_t *settings, char *line)
                     free(settings->provs_regex[i]);
                     settings->provs_regex[i] = NULL;
                 }
+		temp = ptr;
             } else {
                 /* Hmmmm, fail gracefully */
             }
         } else if ( (temp = check_arg(ptr,"name=") ) != NULL ) {
             if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
-                if ( *end == '\n' ) {
-                    ptr = end + 1;
-                } else {
-                    ptr = end;
-                }
+                ptr = end + 1;
                 *end = 0;
                 i = settings->num_names++;
                 settings->names = (char **)realloc(settings->names, settings->num_names * sizeof(char *));
@@ -198,20 +202,18 @@ static int parse_line(setting_t *settings, char *line)
                     free(settings->names_regex[i]);
                     settings->names_regex[i] = NULL;
                 }
+		temp = ptr;
             } else {
                 /* Hmmmm, fail gracefully */
             }
         } else if ( (temp = check_arg(ptr,"source=") ) != NULL ) {
             if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
-                if ( *end == '\n' ) {
-                    ptr = end + 1;
-                } else {
-                    ptr = end;
-                }
+                ptr = end + 1;
                 *end = 0;
                 i = settings->num_sources++;
                 settings->sources = (char **)realloc(settings->sources, settings->num_sources * sizeof(char *));
                 settings->sources[i] = strdup(temp);
+		temp = ptr;
             } else {
                 /* Hmmmm, fail gracefully */
             }
@@ -223,6 +225,17 @@ static int parse_line(setting_t *settings, char *line)
             read_ints(temp,&settings->num_apids,&settings->apids);
         } else if ( (temp = check_arg(ptr,"tpid=") ) != NULL ) {
             read_ints(temp,&settings->num_dpids,&settings->dpids);
+        } else if ( (temp = check_arg(ptr,"group=") ) != NULL ) {
+            if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
+                ptr = end + 1;
+                *end = 0;
+                if ( settings->group_name )
+                    free(settings->group_name);
+                settings->group_name = strdup(temp);
+	        temp = ptr;
+	    } else {
+		/* Hmmm fail gracefully *Hmmm fail gracefully */
+            }
         } else {
             temp = ptr + 1;
         }
@@ -268,6 +281,16 @@ int parse_file(const char *filename)
             } else {
                 free(setting);
             }
+        } else if ( strncmp(buf,"group:",strlen("group:")) == 0 ) {
+            ptr = buf + strlen("group:") + 1;
+            setting = (setting_t *)calloc(1,sizeof(*setting));
+            if ( parse_line(setting,ptr) ) {
+                i = num_groups++;
+                groups = (setting_t **)realloc(groups, num_groups * sizeof(setting_t *));
+                groups[i] = setting;
+            } else {
+                free(setting);
+	    }
         }
     }
     return 1;
@@ -415,4 +438,101 @@ bool CheckChannel(cChannel *channel)
         }
     }
     return res;
+}
+
+/** \brief Get a channel by name
+ *
+ *  \param name The name to find
+ *
+ *  \retval NULL - not found
+ *  \retval other - The cChannel
+ */
+static cChannel *ChannelGetByName(char *name)
+{
+    for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+        if (strcmp(channel->Name(), name)==0)
+            return channel;
+    }
+    return NULL;
+}
+
+
+/** \brief Try and move a channel based on a settings group 
+ *
+ *  \param channel The channel to test
+ *  \param settings The settings to test against
+ *
+ *  \retval true - Channel moved
+ *  \retval false - Channel not moved
+ */
+static bool CheckChannelMoveReal(cChannel *channel, setting_t *settings)
+{
+    if ( CheckSettings(channel,settings) ) {
+        /* If it matches the filter then we should attempt to move it */
+        cChannel *groupSep;
+        int       idx;
+
+        /* Get the current group separator */
+        idx = Channels.GetPrevGroup(channel->Index());
+
+        if ( idx != -1 ) {
+            groupSep = Channels.Get(idx);
+            if ( strcmp(groupSep->Name(),settings->group_name) == 0 ) {
+                /* Already in the group so no need to move */
+                return false;
+            }
+        }
+        
+        /* Find which group its meant to be in */
+        groupSep = ChannelGetByName(settings->group_name);
+            
+        /* Not defined, so define it */
+        if ( !groupSep ) {
+            groupSep = new cChannel();
+            groupSep->SetName(settings->group_name,"","");
+            groupSep->SetGroupSep(true);
+            Channels.Add(groupSep);
+        }
+        /* Move the channel to the end of the group */
+        if ( Channels.GetNextGroup(groupSep->Index()) >= 0 ) {
+            groupSep = Channels.Get(Channels.GetNextGroup(groupSep->Index()));
+        } else {
+            groupSep = Channels.Last();
+        }
+        esyslog("Moving channel <%s;%s> to group <%s>\n",channel->Name(),channel->Provider(), settings->group_name);
+        Channels.Move(channel,groupSep);
+        return true;
+    }
+    return false;
+}
+
+/** \brief Group channels as appropriate
+ *
+ *  \param channel The channel to organise
+ *
+ *  \retval true - Moved channel
+ *  \retval false - Didn't move channel
+ */
+bool CheckChannelMove(cChannel *channel)
+{
+    bool  ret = false;
+    int   i;
+
+    printf("Check if <%s> needs to be moved\n",channel->Name());
+
+    for ( i = 0; i < num_keep; i++ ) {
+        if ( keep[i]->group_name != NULL ) {
+            if ( CheckChannelMoveReal(channel,keep[i]) == true ) {
+                ret = true;
+	    }
+        }
+    }
+    for ( i = 0; i < num_groups; i++ ) {
+        if ( groups[i]->group_name != NULL ) {
+            if ( CheckChannelMoveReal(channel,keep[i]) == true ) {
+                ret = true;
+	    }
+        }
+    }
+    return ret;
 }

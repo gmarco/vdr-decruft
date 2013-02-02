@@ -13,7 +13,11 @@ Description:
 Clean the cruft from your channels file - i.e. turn on add channels without
 fear of being overwhelmed.
 
+Sort your channels into logical groups.
+
 Example config file is in examples/decruft.conf
+
+Apply the patch in patches before compilation
 
 TODO:
 

@@ -15,6 +15,7 @@
 
 
 #include <vdr/channels.h>
+#include <vdr/dvbdevice.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -157,7 +158,7 @@ static void read_ints(char *line, int *count, int **dest, bool hex=false)
     }
     /* Pick up the last one */
     if ( pos != 0 ) {
-	char *fmt;
+	const char *fmt;
         tempbuf[pos] = 0;
 	if ( hex ) {
 	    fmt = "%x";
@@ -339,6 +340,7 @@ static bool CheckSettings(cChannel *Channel, setting_t *settings)
     int     i,j;
     /* Check CAs */
 
+               cDvbTransponderParameters dtp(Channel->Parameters());
     if ( settings->num_cas ) {
         tests++;
         for ( j = 0; j < settings->num_cas; j++ ) {
@@ -439,7 +441,7 @@ static bool CheckSettings(cChannel *Channel, setting_t *settings)
        }
    }
    if ( settings->num_pols ) {
-       char  pol = tolower(Channel->Polarization());
+       char  pol = tolower(dtp.Polarization());
        tests++;
        for ( j = 0; j < settings->num_pols; j++ ) {
            if ( settings->pols[j] == pol ) {
@@ -535,8 +537,10 @@ static bool CheckChannelMoveReal(cChannel *channel, setting_t *settings)
         /* Not defined, so define it */
         if ( !groupSep ) {
             groupSep = new cChannel();
-            groupSep->SetName(settings->group_name,"","");
-            groupSep->SetGroupSep(true);
+            char* groupSepString;
+            asprintf(&groupSepString, ":%s", settings->group_name);
+            groupSep->Parse(groupSepString);
+            free(groupSepString);
             Channels.Add(groupSep);
         }
         /* Move the channel to the end of the group */

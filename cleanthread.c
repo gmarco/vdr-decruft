@@ -3,7 +3,7 @@
  *
  * See the README file for copyright information and how to reach the author.
  *
- * $Id$
+ * $Id: cleanthread.c,v 1.1.1.1 2005/02/20 17:06:47 dom Exp $
  *
  * Main thread - based on the epgsearch timer thread code
  *

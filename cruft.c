@@ -3,7 +3,7 @@
  *
  * See the README file for copyright information and how to reach the author.
  *
- * $Id$
+ * $Id: cruft.c,v 1.4 2005/02/20 18:34:01 dom Exp $
  *
  * Purge or move channels based on a spec
  *
@@ -40,6 +40,10 @@ typedef struct {
     int       num_names;
     char    **names;
     regex_t **names_regex;
+    int       num_freqs;
+    int      *freqs;
+    int       num_pols;
+    char     *pols;
     int       num_sources;
     char    **sources;
 } setting_t;
@@ -96,6 +100,12 @@ void free_settings(setting_t *s)
     if ( s->sources ) {
         free(s->sources);
     }
+    if ( s->freqs ) {
+        free(s->freqs);
+    }
+    if ( s->pols ) {
+        free(s->pols);
+    }
     if ( s->group_name ) {
         free(s->group_name);
     }
@@ -119,7 +129,7 @@ static char *check_arg(char *ptr, char *match)
     return ptr;
 }
 
-static void read_ints(char *line, int *count, int **dest)
+static void read_ints(char *line, int *count, int **dest, bool hex=false)
 {
     char   tempbuf[10];
     int    num;
@@ -147,8 +157,14 @@ static void read_ints(char *line, int *count, int **dest)
     }
     /* Pick up the last one */
     if ( pos != 0 ) {
+	char *fmt;
         tempbuf[pos] = 0;
-        if ( sscanf(tempbuf,"%x",&num) == 1 ) {
+	if ( hex ) {
+	    fmt = "%x";
+	} else {
+	    fmt = "%d";
+	}
+        if ( sscanf(tempbuf,fmt,&num) == 1 ) {
             *dest = (int *)realloc(*dest, (*count + 1) * sizeof(int) );
             (*dest)[*count] = num;
             (*count)++;
@@ -169,7 +185,7 @@ static int parse_line(setting_t *settings, char *line)
 
     while ( *ptr ) {
         if ( ( temp = check_arg(ptr,"ca=") ) != NULL ) {
-            read_ints(temp,&settings->num_cas,&settings->cas);
+            read_ints(temp,&settings->num_cas,&settings->cas,true);
         } else if ( (temp = check_arg(ptr,"provider=") ) != NULL ) {
             if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
                 ptr = end + 1;
@@ -233,8 +249,20 @@ static int parse_line(setting_t *settings, char *line)
                     free(settings->group_name);
                 settings->group_name = strdup(temp);
 	        temp = ptr;
-	    } else {
-		/* Hmmm fail gracefully *Hmmm fail gracefully */
+            } else {
+                /* Hmmm fail gracefully */
+            }
+        } else if ( (temp = check_arg(ptr,"freq=") ) != NULL ) {
+            read_ints(temp,&settings->num_freqs,&settings->freqs);
+        } else if ( (temp = check_arg(ptr,"pol=") ) != NULL ) {
+            if ( (end = strchr(temp,';')) || (end=strchr(temp,'\n') ) ) {
+                ptr = end + 1;
+                *end = 0;
+                i = settings->num_pols++;
+                settings->pols = (char *)realloc(settings->pols, settings->num_pols);
+                settings->pols[i] = tolower(*temp);
+            } else {
+                /* Hmmmm Fail gracefully */
             }
         } else {
             temp = ptr + 1;
@@ -400,8 +428,26 @@ static bool CheckSettings(cChannel *Channel, setting_t *settings)
        }
        free(source);
    }
-
-
+   if ( settings->num_freqs ) {
+       int  freq = Channel->Frequency();
+       tests++;
+       for ( j = 0; j < settings->num_freqs; j++ ) {
+           if ( freq == settings->freqs[j] ) {
+               match++;
+               break;
+           }
+       }
+   }
+   if ( settings->num_pols ) {
+       char  pol = tolower(Channel->Polarization());
+       tests++;
+       for ( j = 0; j < settings->num_pols; j++ ) {
+           if ( settings->pols[j] == pol ) {
+               match++;
+               break;
+           }
+       }
+   }
    if ( tests == match && tests != 0 ) {
        return true;
    }
@@ -529,7 +575,7 @@ bool CheckChannelMove(cChannel *channel)
     }
     for ( i = 0; i < num_groups; i++ ) {
         if ( groups[i]->group_name != NULL ) {
-            if ( CheckChannelMoveReal(channel,keep[i]) == true ) {
+            if ( CheckChannelMoveReal(channel,groups[i]) == true ) {
                 ret = true;
 	    }
         }

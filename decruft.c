@@ -3,7 +3,7 @@
  *
  * See the README file for copyright information and how to reach the author.
  *
- * $Id$
+ * $Id: decruft.c,v 1.2 2005/02/20 17:30:16 dom Exp $
  *
  * TODO: Configuration
  * TODO: Option to scan on demand
@@ -13,7 +13,7 @@
 #include "cleanthread.h"
 #include "cruft.h"
 
-static const char *VERSION        = "0.0.2";
+static const char *VERSION        = "0.0.3";
 static const char *DESCRIPTION    = "Remove the cruft from your channels";
 static const char *MAINMENUENTRY  = "Decruft";
 

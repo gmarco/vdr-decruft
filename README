@@ -17,7 +17,8 @@ Sort your channels into logical groups.
 
 Example config file is in examples/decruft.conf
 
-Apply the patch in patches before compilation
+Apply the patch in patches before compilation - if you've already got the
+source dependent channel insertion patch then you won't need this.
 
 TODO:
 

@@ -537,10 +537,9 @@ static bool CheckChannelMoveReal(cChannel *channel, setting_t *settings)
         /* Not defined, so define it */
         if ( !groupSep ) {
             groupSep = new cChannel();
-            char* groupSepString;
-            asprintf(&groupSepString, ":%s", settings->group_name);
+            char groupSepString[512];
+            sprintf(groupSepString, ":%s", settings->group_name);
             groupSep->Parse(groupSepString);
-            free(groupSepString);
             Channels.Add(groupSep);
         }
         /* Move the channel to the end of the group */

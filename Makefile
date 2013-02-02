@@ -70,18 +70,18 @@ I18Nmsgs  = $(addprefix $(LOCALEDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo
 I18Npot   = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
-       msgfmt -c -o $@ $<
+	msgfmt -c -o $@ $<
 
 $(I18Npot): $(wildcard *.cpp *.h *.c)
-       xgettext -C -cTRANSLATORS --no-wrap --no-location -k -ktr -ktrNOOP --msgid-bugs-address='<see README>' -o $@ $^
+	xgettext -C -cTRANSLATORS --no-wrap --no-location -k -ktr -ktrNOOP --msgid-bugs-address='<see README>' -o $@ $^
                                                                                                                                                                            
 %.po: $(I18Npot)                                                                                                                                                           
-       msgmerge -U --no-wrap --no-location --backup=none -q $@ $<                                                                                                          
-       @touch $@                                                                                                                                                           
+	msgmerge -U --no-wrap --no-location --backup=none -q $@ $<                                                                                                          
+	@touch $@                                                                                                                                                           
                                                                                                                                                                            
 $(I18Nmsgs): $(LOCALEDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
-       @mkdir -p $(dir $@)
-       cp $< $@
+	@mkdir -p $(dir $@)
+	cp $< $@
 
 .PHONY: i18n
 i18n: $(I18Nmsgs) $(I18Npot)

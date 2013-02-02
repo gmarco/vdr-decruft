@@ -3,7 +3,7 @@
  *
  * See the README file for copyright information and how to reach the author.
  *
- * $Id: cleanthread.c,v 1.1.1.1 2005/02/20 17:06:47 dom Exp $
+ * $Id: cleanthread.c,v 1.3 2005/03/11 18:49:11 dom Exp $
  *
  * Main thread - based on the epgsearch timer thread code
  *
@@ -31,14 +31,20 @@ void sleepSec(long s)
     sleepMSec(s * 1000);
 }
 
+static cCruftCleanThread *Instance = NULL;
 
-cCruftCleanThread *cCruftCleanThread::m_Instance = NULL;
+void startDecruft()
+{
+    Instance->Trigger();
+}
+
+
 
 cCruftCleanThread::cCruftCleanThread(void)
     : cThread("Decruft: cleaning")
 {
     m_Active = false;
-    m_lastUpdate = time(NULL);
+    nextUpdate = -1;
 }
 
 cCruftCleanThread::~cCruftCleanThread()
@@ -49,17 +55,17 @@ cCruftCleanThread::~cCruftCleanThread()
 
 void cCruftCleanThread::Init(void)
 {
-    if ( m_Instance == NULL ) {
-        m_Instance = new cCruftCleanThread;
-        m_Instance->Start();
+    if ( Instance == NULL ) {
+        Instance = new cCruftCleanThread;
+        Instance->Start();
     }
 }
 
 void cCruftCleanThread::Exit(void)
 {
-    if (m_Instance != NULL ) {
-        m_Instance->Stop();
-        DELETENULL(m_Instance);
+    if (Instance != NULL ) {
+        Instance->Stop();
+        DELETENULL(Instance);
     }
 }
 
@@ -69,10 +75,12 @@ void cCruftCleanThread::Stop(void)
     Cancel(3);
 }
 
-bool cCruftCleanThread::NeedUpdate(void)
+
+void cCruftCleanThread::Trigger()
 {
-    return false;	// fixme check config file times
+    nextUpdate = time(NULL);
 }
+    
 
 void cCruftCleanThread::Action(void)
 {
@@ -80,21 +88,20 @@ void cCruftCleanThread::Action(void)
 
     // let VDR do its startup
     sleepSec(15);
-    time_t nextUpdate = time(NULL);
 
     while (m_Active ) {
         time_t now = time(NULL);
-        if (now >= nextUpdate || NeedUpdate()) {
+        if (now >= nextUpdate && nextUpdate > 0  ) {
             if ( Channels.BeingEdited() ) {
 		printf("Channels are being edited");
                 sleepSec(1);
                 continue;
             }
 
-	printf("Cleaning\n");
             /* Grab the channels lock */
             if (!Channels.Lock(true,10)) {
 		printf("Can't lock channels\n");
+		sleepSec(1);
                 continue;
             }
 
@@ -131,8 +138,8 @@ void cCruftCleanThread::Action(void)
             /* And unlock them */
             Channels.SetModified(true);
             Channels.Unlock();
-            m_lastUpdate = time(NULL);
-            nextUpdate = m_lastUpdate + 600; /* FIXME: run every 10 minutes */
+            // nextUpdate = m_lastUpdate + 600; /* FIXME: run every 10 minutes */
+	    nextUpdate = -1;	// Make this run the once
         }
         sleepSec(5);
     }

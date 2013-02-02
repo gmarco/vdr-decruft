@@ -1,6 +1,11 @@
 VDR Plugin 'decruft' Revision History
 -------------------------------------
 
+2005-03-11: Version 0.0.4
+
+- Decrufting is only available by the main menu - the periodic cleaning was
+causing too many problems with other plugins
+
 2005-02-20: Version 0.0.3
 
 - Add in support for freq=,pol= for blacklisting a transponder

@@ -7,11 +7,12 @@
 #include "cruft.h"
 
 
+extern void startDecruft();
+
 class cCruftCleanThread : public cThread {
 private:
     bool   m_Active;
-    static cCruftCleanThread *m_Instance;
-    time_t m_lastUpdate;
+    time_t nextUpdate;
 protected:
     virtual void Action(void);
     void Stop(void);
@@ -19,6 +20,7 @@ protected:
 public:
     cCruftCleanThread(void);
     virtual ~cCruftCleanThread();
+    void Trigger();
     static void Init(void);
     static void Exit(void);
 };

@@ -22,6 +22,7 @@ source dependent channel insertion patch then you won't need this.
 
 TODO:
 
-- Cleanup on demand
-- Configure cleanup period (it's 10 mins ATM)
+- Cleanup on demand (done 0.0.4)
+- Configure cleanup period (it's 10 mins ATM) (will never be done, periodic
+cleanup was removed in 0.0.4)
 - Configure filters using OSD?

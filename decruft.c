@@ -3,17 +3,17 @@
  *
  * See the README file for copyright information and how to reach the author.
  *
- * $Id: decruft.c,v 1.2 2005/02/20 17:30:16 dom Exp $
+ * $Id: decruft.c,v 1.3 2005/03/11 18:49:11 dom Exp $
  *
  * TODO: Configuration
- * TODO: Option to scan on demand
+ * TODO: Option to scan on demand (0.0.4)
  */
 
 #include <vdr/plugin.h>
 #include "cleanthread.h"
 #include "cruft.h"
 
-static const char *VERSION        = "0.0.3";
+static const char *VERSION        = "0.0.4";
 static const char *DESCRIPTION    = "Remove the cruft from your channels";
 static const char *MAINMENUENTRY  = "Decruft";
 
@@ -31,7 +31,7 @@ public:
   virtual bool Start(void);
   virtual void Stop(void);
   virtual void Housekeeping(void);
-  virtual const char *MainMenuEntry(void) { return NULL; }
+  virtual const char *MainMenuEntry(void) { return MAINMENUENTRY; }
   virtual cOsdObject *MainMenuAction(void);
   virtual cMenuSetupPage *SetupMenu(void);
   virtual bool SetupParse(const char *Name, const char *Value);
@@ -88,6 +88,7 @@ void cPluginDecruft::Housekeeping(void)
 cOsdObject *cPluginDecruft::MainMenuAction(void)
 {
   // Perform the action when selected from the main VDR menu.
+  startDecruft();
   return NULL;
 }
 

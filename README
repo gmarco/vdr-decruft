@@ -1,0 +1,22 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Dominic Morris <dom@suborbital.org.uk>
+
+Project's homepage:          http://www.rst38.org.uk/vdr/decruft
+
+Latest version available at: http://www.rst38.org.uk/vdr/decruft
+
+See the file COPYING for license information.
+
+Description:
+
+Clean the cruft from your channels file - i.e. turn on add channels without
+fear of being overwhelmed.
+
+Example config file is in examples/decruft.conf
+
+TODO:
+
+- Cleanup on demand
+- Configure cleanup period (it's 10 mins ATM)
+- Configure filters using OSD?
